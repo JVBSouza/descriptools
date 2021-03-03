@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun  2 16:42:51 2020
-
-@author: Acer
-"""
-
 import numpy as np
-from matplotlib import pyplot as plt
 import math
 
-def minMaxScale(mat,mn,mx,nodata):
-    scaled = np.where(mat==nodata,np.nan,mat)
-    scaled = np.where(np.isnan(mat),scaled,(scaled-mn)/(mx-mn))
-    
+
+def minMaxScale(mat, mn, mx, nodata):
+    scaled = np.where(mat == nodata, np.nan, mat)
+    scaled = np.where(np.isnan(mat), scaled, (scaled - mn) / (mx - mn))
+
     return scaled
+
 
 def scale(X, x_min, x_max):
     '''
@@ -39,15 +33,16 @@ def scale(X, x_min, x_max):
     # # https://datascience.stackexchange.com/questions/39142/normalize-matrix-in-python-numpy
     # nom = (X-X.min())*(x_max-x_min)
     # denom = X.max() - X.min()
-    # denom = denom + (denom is 0)    
+    # denom = denom + (denom is 0)
     # https://datascience.stackexchange.com/questions/39142/normalize-matrix-in-python-numpy
-    nom = (X-x_locmin)*(x_max-x_min)
+    nom = (X - x_locmin) * (x_max - x_min)
     denom = X.max() - x_locmin
-    denom = denom + (denom is 0)    
-    return x_min + nom/denom 
+    denom = denom + (denom is 0)
+    return x_min + nom / denom
+
 
 # import random
-def calibration_new(desc,comp,under):
+def calibration_new(desc, comp, under):
     '''
     Return the best threshold value (th) for the linear binary classification.
     It is found by iteratively changing the value.
@@ -67,10 +62,10 @@ def calibration_new(desc,comp,under):
         Threshold value that returns the best fit index.
 
     '''
-    c,f1,re = avaliacao(binary_map(desc,25/100,under),comp)
-    c2,f2,re = avaliacao(binary_map(desc,50/100,under),comp)
-    c3,f3,re = avaliacao(binary_map(desc,75/100,under),comp)
-    
+    c, f1, re = avaliacao(binary_map(desc, 25 / 100, under), comp)
+    c2, f2, re = avaliacao(binary_map(desc, 50 / 100, under), comp)
+    c3, f3, re = avaliacao(binary_map(desc, 75 / 100, under), comp)
+
     if f3 > f2:
         if f3 > f1:
             f = f3
@@ -85,52 +80,52 @@ def calibration_new(desc,comp,under):
         else:
             x = 25
             f = f1
-            
-    for i in range(x-20,x+30,10):
-        c, fx, re = avaliacao(binary_map(desc,i/100,under),comp)
+
+    for i in range(x - 20, x + 30, 10):
+        c, fx, re = avaliacao(binary_map(desc, i / 100, under), comp)
         if fx >= f:
             f = fx
             th = i
-            
+
     x = th
-    for i in range(x-5,x+6,1):
-        c, fx, re = avaliacao(binary_map(desc,i/100,under),comp)
+    for i in range(x - 5, x + 6, 1):
+        c, fx, re = avaliacao(binary_map(desc, i / 100, under), comp)
         if fx > f:
             f = fx
             th = i
-    
+
     x = th * 10
     th = x
-    for i in range(x-10,x+11,1):
-        c, fx, re = avaliacao(binary_map(desc,i/1000,under),comp)
+    for i in range(x - 10, x + 11, 1):
+        c, fx, re = avaliacao(binary_map(desc, i / 1000, under), comp)
         if fx > f:
             f = fx
             th = i
-            
-     
+
     x = th * 10
-    th = x  
-    for i in range(x-10,x+11,1):
-        c, fx, re = avaliacao(binary_map(desc,i/10000,under),comp)
+    th = x
+    for i in range(x - 10, x + 11, 1):
+        c, fx, re = avaliacao(binary_map(desc, i / 10000, under), comp)
         if fx > f:
             f = fx
             th = i
 
-    return th/10000
+    return th / 10000
 
-def calibration(desc,comp,dir):
+
+def calibration(desc, comp, dir):
     #Retorna o melhor percentil de corte
     # print(desc)
     x1 = 100
     x2 = 0
     best_f = 0
     threshold = 0
-    c1,f1,re = avaliacao(binary_map(desc,x1,dir),comp)
-    c2,f2,re = avaliacao(binary_map(desc,x2,dir),comp)
-    for i in range(0,10,1):
-        
-        x3 = math.floor((x1+x2)/2)
-        c3,f3,re = avaliacao(binary_map(desc,x3,dir),comp)
+    c1, f1, re = avaliacao(binary_map(desc, x1, dir), comp)
+    c2, f2, re = avaliacao(binary_map(desc, x2, dir), comp)
+    for i in range(0, 10, 1):
+
+        x3 = math.floor((x1 + x2) / 2)
+        c3, f3, re = avaliacao(binary_map(desc, x3, dir), comp)
 
         if f3 > best_f:
             best_f = f3
@@ -146,7 +141,8 @@ def calibration(desc,comp,dir):
     # return threshold, avaliacao(binary_map(desc,threshold,dir),comp)
     return threshold
 
-def binary_map(desc,threshold,under):
+
+def binary_map(desc, threshold, under):
     '''
     Generates the linear binary map matrix from the descriptor matrix and
     threshold value
@@ -167,29 +163,34 @@ def binary_map(desc,threshold,under):
         0 = not flooded cell, 1 = flooded cell
 
     '''
-    desc = np.where(desc==desc[0,0],np.nan,desc)
-    
+    desc = np.where(desc == desc[0, 0], np.nan, desc)
+
     if under == 'under':
-        binary_desc = np.where(np.isnan(desc),0,np.where(desc<=threshold,1,0))
+        binary_desc = np.where(np.isnan(desc), 0,
+                               np.where(desc <= threshold, 1, 0))
     else:
-        binary_desc = np.where(np.isnan(desc),0,np.where(desc>=threshold,1,0))
-        
+        binary_desc = np.where(np.isnan(desc), 0,
+                               np.where(desc >= threshold, 1, 0))
+
     return binary_desc
 
-def binary_map_old(desc,threshold,under):
-    #normalizar a matriz? 
+
+def binary_map_old(desc, threshold, under):
+    #normalizar a matriz?
     desc = scale(desc, -1, 1)
-    desc = np.where(desc==desc[0,0],np.nan,desc)
-    
+    desc = np.where(desc == desc[0, 0], np.nan, desc)
+
     if under == 'under':
         # binary_desc = np.where(desc<=np.nanpercentile(desc,threshold),1,0)
-        binary_desc = np.where(desc<=-100,0,desc<=np.nanpercentile(desc,threshold),1,0)
+        binary_desc = np.where(desc <= -100, 0,
+                               desc <= np.nanpercentile(desc, threshold), 1, 0)
     else:
-        binary_desc = np.where(desc>=np.nanpercentile(desc,threshold),1,0)
-        
+        binary_desc = np.where(desc >= np.nanpercentile(desc, threshold), 1, 0)
+
     return binary_desc
 
-def avaliacao(desc,comp):
+
+def avaliacao(desc, comp):
     '''
     Calculates the performance indexes: Fit index and Correctness index
     Also returns the resulting linear binary classified matrix
@@ -212,30 +213,30 @@ def avaliacao(desc,comp):
         2 = false negative and 3 = true positive
 
     '''
-    comp[comp==1] = 2
-    comp[comp==-100] = 0
+    comp[comp == 1] = 2
+    comp[comp == -100] = 0
 
-    result = desc+comp
-    elements,count = np.unique(result, return_counts=True)
+    result = desc + comp
+    elements, count = np.unique(result, return_counts=True)
 
-    
-    if not np.any(elements==0):
-        count = np.insert(count,0,0)
-        elements = np.insert(elements,0,0)
-    if not np.any(elements==1):
-        count = np.insert(count,1,0)
-        elements = np.insert(elements,1,1)
-    if not np.any(elements==2):
-        count = np.insert(count,2,0)
-        elements = np.insert(elements,2,2)
-    if not np.any(elements==3):
-        count = np.insert(count,3,0)
-        elements = np.insert(elements,3,3)
- 
+    if not np.any(elements == 0):
+        count = np.insert(count, 0, 0)
+        elements = np.insert(elements, 0, 0)
+    if not np.any(elements == 1):
+        count = np.insert(count, 1, 0)
+        elements = np.insert(elements, 1, 1)
+    if not np.any(elements == 2):
+        count = np.insert(count, 2, 0)
+        elements = np.insert(elements, 2, 2)
+    if not np.any(elements == 3):
+        count = np.insert(count, 3, 0)
+        elements = np.insert(elements, 3, 3)
+
     c = correctness(count)
     f = fit(count)
-    
-    return c,f, result
+
+    return c, f, result
+
 
 def correctness(count):
     '''
@@ -255,7 +256,8 @@ def correctness(count):
 
     '''
 
-    return ((count[3])/(count[2]+count[3]))
+    return ((count[3]) / (count[2] + count[3]))
+
 
 def fit(count):
     '''  
@@ -276,4 +278,4 @@ def fit(count):
     '''
     #intersecção do medelo e observado sobre união dos dois
     #quanto menos falsos, mais perto de 1 fica
-    return ((count[3])/(count[3]+count[2]+count[1]))
+    return ((count[3]) / (count[3] + count[2] + count[1]))
