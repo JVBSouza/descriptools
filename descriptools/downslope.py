@@ -363,21 +363,21 @@ def downsloper(dem,
             nE = bCol[n + 1]
 
             downslope[mS:mE,
-                      nS:nE] = downslope_host(dem[mS:mE, nS:nE],
-                                              flow_direction[mS:mE, nS:nE], px,
-                                              elevation_difference)
+                      nS:nE] = downslope_cpu(dem[mS:mE, nS:nE],
+                                             flow_direction[mS:mE, nS:nE], px,
+                                             elevation_difference)
     downslope = downslope_sequential_jit(dem, flow_direction, px,
                                          elevation_difference, downslope)
 
     return downslope
 
 
-def downslope_host(dem,
-                   flow_direction,
-                   px,
-                   elevation_difference,
-                   blocks=0,
-                   threads=0):
+def downslope_cpu(dem,
+                  flow_direction,
+                  px,
+                  elevation_difference,
+                  blocks=0,
+                  threads=0):
     '''
     Method responsible for the host/device data transfer
 
@@ -417,8 +417,8 @@ def downslope_host(dem,
     flow_direction = cuda.to_device(flow_direction)
     downslope = cuda.to_device(downslope)
 
-    downslope_device[blocks, threads](dem, flow_direction, downslope, px,
-                                      elevation_difference, col, row)
+    downslope_gpu[blocks, threads](dem, flow_direction, downslope, px,
+                                   elevation_difference, col, row)
 
     downslope = downslope.copy_to_host()
 
@@ -428,8 +428,8 @@ def downslope_host(dem,
 
 
 @cuda.jit
-def downslope_device(dem, flow_direction, downslope, px, elevation_difference,
-                     col, row):
+def downslope_gpu(dem, flow_direction, downslope, px, elevation_difference,
+                  col, row):
     '''
     GPU Downslope index method
 

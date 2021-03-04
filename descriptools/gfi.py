@@ -2,20 +2,11 @@ from numba import cuda, jit, float32
 import numpy as np
 import math
 
-
-def divisor(len_row, len_col, div_row, div_col):
-    bCol = np.array([], dtype=int)
-    bRow = np.array([], dtype=int)
-
-    for i in range(0, div_row, 1):
-        bRow = np.append(bRow, [math.floor((i + 1) * len_row / (div_row + 1))])
-    for i in range(0, div_col, 1):
-        bCol = np.append(bCol, [math.floor((i + 1) * len_col / (div_col + 1))])
-
-    return bRow, bCol
+from descriptools.helpers import divisor
 
 
-def gfi_sequential(hand, fac, indices, n, b):
+def geomorphic_flood_index_sequential(hand, flow_accumulation, indices,
+                                      expoent, scale_factor):
     '''
     Sequential method for the GFI index
 
@@ -23,80 +14,79 @@ def gfi_sequential(hand, fac, indices, n, b):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    flow_accumulation : int
         Flow accumulation. Represent the river as source of hazard.
     indices : int array
         River cell index.
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
 
     Returns
     -------
-    gfi : float array
+    geomorphic_flood_index : float array
         geomorphic flood index array.
 
     '''
-    facr = river_accumulation(fac, indices)
+    river_flow_accumulation = river_accumulation(flow_accumulation, indices)
 
-    gfi = np.where(
+    geomorphic_flood_index = np.where(
         hand == -100, -100,
         np.where(
             hand == 0, 0,
-            np.log(b * (np.power(np.where(facr == 0, 1, facr), n)) / hand)))
+            np.log(scale_factor * (np.power(
+                np.where(river_flow_accumulation == 0, 1,
+                         river_flow_accumulation), expoent)) / hand)))
 
-    return gfi
+    return geomorphic_flood_index
 
 
 @jit
-def gfi_sequential_jit(hand, fac, indices, n, b):
-    facr = river_accumulation(fac, indices)
-    gfi = np.zeros(hand.shape, dtype=float32)
+def geomorphic_flood_index_sequential_jit(hand, flow_accumulation, indices,
+                                          expoent, scale_factor):
+    river_flow_accumulation = river_accumulation(flow_accumulation, indices)
+    geomorphic_flood_index = np.zeros(hand.shape, dtype=float32)
 
     for i in range(0, len(hand), 1):
         for j in range(0, len(hand[0]), 1):
             if hand[i, j] == -100:
-                gfi[i, j] = -100
-            # elif hand[i,j] == 0:
-            #     gfi[i,j] = np.log(b*(np.power(facr[i,j], n))/(hand[i,j]+0.01))
+                geomorphic_flood_index[i, j] = -100
             else:
-                # if facr[i,j] == 0:
-                #     gfi[i,j] = np.log(b*(np.power(1, n))/hand[i,j])
-                #     # lnhlh[i,j] = 1
-                # else:
-                gfi[i, j] = np.log(b * (np.power(facr[i, j], n)) /
-                                   (hand[i, j] + 0.01))
-                # lnhlh[i,j] = 2
+                geomorphic_flood_index[i, j] = np.log(
+                    scale_factor *
+                    (np.power(river_flow_accumulation[i, j], expoent)) /
+                    (hand[i, j] + 0.01))
 
-    return gfi
+    return geomorphic_flood_index
 
 
 @jit
-def lnhlh_sequential_jit(hand, fac, n, b):
+def ln_hl_H_sequential_jit(hand, flow_accumulation, expoent, scale_factor):
 
-    lnhlh = np.zeros(hand.shape, dtype=float32)
+    ln_hl_H = np.zeros(hand.shape, dtype=float32)
 
     for i in range(0, len(hand), 1):
         for j in range(0, len(hand[0]), 1):
             if hand[i, j] == -100:
-                lnhlh[i, j] = -100
+                ln_hl_H[i, j] = -100
             elif hand[i, j] == 0:
-                lnhlh[i, j] = 0
+                ln_hl_H[i, j] = 0
             else:
-                if fac[i, j] == 0:
-                    lnhlh[i, j] = np.log(b * (np.power(1, n)) /
-                                         (hand[i, j] + 0.01))
-                    # lnhlh[i,j] = 1
+                if flow_accumulation[i, j] == 0:
+                    ln_hl_H[i,
+                            j] = np.log(scale_factor * (np.power(1, expoent)) /
+                                        (hand[i, j] + 0.01))
                 else:
-                    lnhlh[i, j] = np.log(b * (np.power(fac[i, j], n)) /
-                                         (hand[i, j] + 0.01))
-                    # lnhlh[i,j] = 2
+                    ln_hl_H[i, j] = np.log(
+                        scale_factor *
+                        (np.power(flow_accumulation[i, j], expoent)) /
+                        (hand[i, j] + 0.01))
 
-    return lnhlh
+    return ln_hl_H
 
 
-def lnhlh_sequential(hand, fac, n, b):
+def ln_hl_H_sequential(hand, flow_accumulation, expoent, scale_factor):
     '''
     Sequential method for the ln(hl/HAND) index
 
@@ -104,70 +94,63 @@ def lnhlh_sequential(hand, fac, n, b):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    flow_accumulation : int
         Flow accumulation. Represent the upslope area as source of hazard.
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
 
     Returns
     -------
-    gfi : float array
-        geomorphic flood index array.
+    ln_hl_H : float array
+        ln(hl/H) index array.
 
     '''
-    lnhlh = np.where(
+    ln_hl_H = np.where(
         hand == -100, -100,
-        np.where(hand == 0, 0,
-                 np.log(b * (np.power(np.where(fac == 0, 1, fac), n)) / hand)))
-    #np.where(fac==0,1,fac)
-    return lnhlh
+        np.where(
+            hand == 0, 0,
+            np.log(scale_factor * (np.power(
+                np.where(flow_accumulation == 0, 1, flow_accumulation),
+                expoent)) / hand)))
+    return ln_hl_H
 
 
 @jit
-def river_accumulation(fac, indices):
+def river_accumulation(flow_accumulation, indices):
     '''
     Method that return the array with the river cell flow accumulation.
 
     Parameters
     ----------
-    fac : int
+    flow_accumulation : int
         Flow accumulation. 
     indices : indices : int array
         River cell index.
 
     Returns
     -------
-    fac_river : int
+    river_flow_accumulation : int
         Flow accumulation of the river cell. Represent the river as source of hazard.
 
     '''
-    row, col = fac.shape
-    fac = np.asarray(fac).reshape(-1)
+    row, col = flow_accumulation.shape
+    flow_accumulation = np.asarray(flow_accumulation).reshape(-1)
     indices = np.asarray(indices).reshape(-1)
-    fac_river = np.zeros(row * col, float32)
+    river_flow_accumulation = np.zeros(row * col, float32)
 
-    # fac_river = np.where(fac != -100,fac[indices],-100)
-    fac_river = np.where(indices != -100, fac[indices], fac[0])
+    river_flow_accumulation = np.where(indices != -100,
+                                       flow_accumulation[indices],
+                                       flow_accumulation[0])
 
-    fac_river = fac_river.reshape(row, col)
+    river_flow_accumulation = river_flow_accumulation.reshape(row, col)
 
-    return fac_river
-
-
-def river_accumulation_old(fac, indices):
-    fac_river = np.zeros((len(fac), len(fac[0])))
-    for i in range(0, len(fac), 1):
-        for j in range(0, len(fac[0]), 1):
-            ii = math.floor(indices[i, j] / len(indices[0]))
-            jj = indices[i, j] % len(indices[0])
-            jj = jj.astype('int')
-            fac_river[i, j] = fac[ii, jj]
-    return fac_river
+    return river_flow_accumulation
 
 
-def gfi_calculator(hand, fac, indices, ngfi, b, size):
+def gfi_calculator(hand, flow_accumulation, indices, n_gfi, scale_factor,
+                   size):
     '''
     Method responsible for the partioning of the matrix
 
@@ -175,13 +158,13 @@ def gfi_calculator(hand, fac, indices, ngfi, b, size):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    flow_accumulation : int
         Flow accumulation. Represent the river as source of hazard.
     indices : indices : int array
         River cell index.
-    n : float
+    n_gfi : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
 
     Returns
@@ -196,32 +179,40 @@ def gfi_calculator(hand, fac, indices, ngfi, b, size):
     div_col = 2
     div_row = 2
 
-    bRow, bCol = divisor(row_size, col_size, div_row, div_col)
+    boundary_row, boundary_column = divisor(row_size, col_size, div_row,
+                                            div_col)
 
-    fac = river_accumulation(fac, indices)
+    flow_accumulation = river_accumulation(flow_accumulation, indices)
 
     gfi = np.zeros((row_size, col_size))
 
-    bRow = np.insert(bRow, div_row, row_size)
-    bRow = np.insert(bRow, 0, 0)
-    bCol = np.insert(bCol, div_col, col_size)
-    bCol = np.insert(bCol, 0, 0)
+    boundary_row = np.insert(boundary_row, div_row, row_size)
+    boundary_row = np.insert(boundary_row, 0, 0)
+    boundary_column = np.insert(boundary_column, div_col, col_size)
+    boundary_column = np.insert(boundary_column, 0, 0)
 
     for m in range(0, div_row + 1, 1):
         for n in range(0, div_col + 1, 1):
 
-            mS = bRow[m]
-            mE = bRow[m + 1]
-            nS = bCol[n]
-            nE = bCol[n + 1]
+            mS = boundary_row[m]
+            mE = boundary_row[m + 1]
+            nS = boundary_column[n]
+            nE = boundary_column[n + 1]
 
-            gfi[mS:mE, nS:nE] = gfi_host(hand[mS:mE, nS:nE], fac[mS:mE, nS:nE],
-                                         ngfi, b, size)
+            gfi[mS:mE, nS:nE] = geomorphic_flood_index_cpu(
+                hand[mS:mE, nS:nE], flow_accumulation[mS:mE, nS:nE], n_gfi,
+                scale_factor, size)
 
     return gfi
 
 
-def gfi_host(hand, fac_rio, n, b, size, blocks=0, threads=0):
+def geomorphic_flood_index_cpu(hand,
+                               river_flow_accumulation,
+                               expoent,
+                               scale_factor,
+                               size,
+                               blocks=0,
+                               threads=0):
     '''
     Method responsible for the host/device data transfer
 
@@ -229,11 +220,11 @@ def gfi_host(hand, fac_rio, n, b, size, blocks=0, threads=0):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    river_flow_accumulation : int
         Flow accumulation. Represent the river as source of hazard.
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
     blocks : int, optional
         Number of block of threads. The default is 0.
@@ -253,16 +244,18 @@ def gfi_host(hand, fac_rio, n, b, size, blocks=0, threads=0):
         blocks = math.ceil((row * col) / threads)
 
     hand = np.asarray(hand).reshape(-1)
-    fac_rio = np.asarray(fac_rio).reshape(-1)
+    river_flow_accumulation = np.asarray(river_flow_accumulation).reshape(-1)
 
     gfi = np.zeros((row * col), dtype='float32')
 
-    fac_rio = cuda.to_device(fac_rio)
+    river_flow_accumulation = cuda.to_device(river_flow_accumulation)
     hand = cuda.to_device(hand)
 
     gfi = cuda.to_device(gfi)
 
-    gfi_device[blocks, threads](hand, fac_rio, gfi, n, b, size)
+    geomorphic_flood_index_gpu[blocks,
+                               threads](hand, river_flow_accumulation, gfi,
+                                        expoent, scale_factor, size)
 
     gfi = gfi.copy_to_host()
     gfi = gfi.reshape(row, col)
@@ -271,7 +264,8 @@ def gfi_host(hand, fac_rio, n, b, size, blocks=0, threads=0):
 
 
 @cuda.jit
-def gfi_device(hand, facr, gfi, n, b, size):
+def geomorphic_flood_index_gpu(hand, river_flow_accumulation, gfi, expoent,
+                               scale_factor, size):
     '''
     GPU GFI index method
 
@@ -279,13 +273,13 @@ def gfi_device(hand, facr, gfi, n, b, size):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    river_flow_accumulation : int
         Flow accumulation. Represent the river as source of hazard.
     gfi : float array
         geomorphic flood index array. Initialized as zeros.
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
 
     '''
@@ -294,15 +288,12 @@ def gfi_device(hand, facr, gfi, n, b, size):
         if hand[i] <= -100:
             gfi[i] = -100
         else:
-            # if hand[i] == 0:
-            # gfi[i] = 0
-            # else:
-            gfi[i] = math.log(b * (math.pow(
-                (facr[i] * (size * size)), n)) / (hand[i] + 0.01))
-            # gfi[i] = math.log(b*(math.pow(facr[i], n))/(hand[i]))
+            gfi[i] = math.log(scale_factor * (math.pow(
+                (river_flow_accumulation[i] * (size * size)), expoent)) /
+                              (hand[i] + 0.01))
 
 
-def lnhlh_calculator(hand, fac, ngfi, b, size):
+def ln_hl_H_calculator(hand, flow_accumulation, n_gfi, scale_factor, size):
     '''
     Method responsible for the partioning of the matrix
 
@@ -312,15 +303,15 @@ def lnhlh_calculator(hand, fac, ngfi, b, size):
         Height above the nearest drainage.
     fac : int
         Flow accumulation. 
-    n : float
+    n_gfi : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
 
     Returns
     -------
-    lnhlh : float array
-        lnhlh index array.
+    ln_hl_H : float array
+        ln(hl/H) index array.
 
     '''
     row_size = len(hand)
@@ -344,13 +335,20 @@ def lnhlh_calculator(hand, fac, ngfi, b, size):
             nS = bCol[n]
             nE = bCol[n + 1]
 
-            lnhlh[mS:mE, nS:nE] = lnhlh_host(hand[mS:mE, nS:nE],
-                                             fac[mS:mE, nS:nE], ngfi, b, size)
+            lnhlh[mS:mE, nS:nE] = ln_hl_H_cpu(hand[mS:mE, nS:nE],
+                                              flow_accumulation[mS:mE, nS:nE],
+                                              n_gfi, scale_factor, size)
 
     return lnhlh
 
 
-def lnhlh_host(hand, fac, n, b, size, blocks=0, threads=0):
+def ln_hl_H_cpu(hand,
+                flow_accumulation,
+                expoent,
+                scale_factor,
+                size,
+                blocks=0,
+                threads=0):
     '''
     Method responsible for the host/device data transfer
 
@@ -358,11 +356,11 @@ def lnhlh_host(hand, fac, n, b, size, blocks=0, threads=0):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    flow_accumulation : int
         Flow accumulation. 
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
     blocks : int, optional
         Number of block of threads. The default is 0.
@@ -371,8 +369,8 @@ def lnhlh_host(hand, fac, n, b, size, blocks=0, threads=0):
 
     Returns
     -------
-    lnhlh : float array
-        lnhlh index array.
+    ln_hl_H : float array
+        ln(hl/H) index array.
 
     '''
     row = len(hand)
@@ -382,14 +380,15 @@ def lnhlh_host(hand, fac, n, b, size, blocks=0, threads=0):
         blocks = math.ceil((row * col) / threads)
 
     hand = np.asarray(hand).reshape(-1)
-    fac = np.asarray(fac).reshape(-1)
+    flow_accumulation = np.asarray(flow_accumulation).reshape(-1)
     lnhlh = np.zeros((row * col), dtype='float32')
 
-    fac = cuda.to_device(fac)
+    flow_accumulation = cuda.to_device(flow_accumulation)
     hand = cuda.to_device(hand)
     lnhlh = cuda.to_device(lnhlh)
 
-    lnhlh_device[blocks, threads](hand, fac, lnhlh, n, b, size)
+    ln_hl_H_gpu[blocks, threads](hand, flow_accumulation, lnhlh, expoent,
+                                 scale_factor, size)
 
     lnhlh = lnhlh.copy_to_host()
     lnhlh = lnhlh.reshape(row, col)
@@ -398,7 +397,7 @@ def lnhlh_host(hand, fac, n, b, size, blocks=0, threads=0):
 
 
 @cuda.jit
-def lnhlh_device(hand, fac, lnhlh, n, b, size):
+def ln_hl_H_gpu(hand, flow_accumulation, ln_hl_H, expoent, scale_factor, size):
     '''
     GPU ln(hl/HAND) index method
 
@@ -406,26 +405,32 @@ def lnhlh_device(hand, fac, lnhlh, n, b, size):
     ----------
     hand : int or flat array
         Height above the nearest drainage.
-    fac : int
+    flow_accumulation : int
         Flow accumulation. Represent the river as source of hazard.
-    lnhlh : float array
+    ln_hl_H : float array
         lnhlh index array. Initialized as zeros.
-    n : float
+    expoent : float
         Expoent (<1) Calibrated for the region.
-    b : float
+    scale_factor : float
         Scale factor.
+
+    Returns 
+    --------
+    ln_hl_H : float array
+        ln(hl/H) index array.
 
     '''
     i = cuda.grid(1)
     if i >= 0 and i < len(hand):
         if hand[i] <= -100:
-            lnhlh[i] = -100
-        # elif hand[i] == 0:
-        #     lnhlh[i] = 0
+            ln_hl_H[i] = -100
         else:
-            if fac[i] == 0:
-                lnhlh[i] = math.log(
-                    (b * math.pow(1 * (size * size), n)) / (hand[i] + 0.01))
+            if flow_accumulation[i] == 0:
+                ln_hl_H[i] = math.log(
+                    (scale_factor * math.pow(1 * (size * size), expoent)) /
+                    (hand[i] + 0.01))
             else:
-                lnhlh[i] = math.log((b * math.pow(fac[i] * (size * size), n)) /
-                                    (hand[i] + 0.01))
+                ln_hl_H[i] = math.log(
+                    (scale_factor *
+                     math.pow(flow_accumulation[i] *
+                              (size * size), expoent)) / (hand[i] + 0.01))

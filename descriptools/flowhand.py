@@ -104,9 +104,7 @@ def flow_distance_indexes_sequential(flow_direction,
                         y -= 1
                         dist += px * 1.41  # FIX: Square root
 
-                    # elif fdr[y,x] == -100:
                     elif flow_direction[y, x] == 255:
-                        # fdist[i,j] = -100
                         isnan = 1
                         break
 
@@ -173,7 +171,6 @@ def fdist_indexes_sequential_jit(fdr,
                 loop = 0
                 isnan = 0
                 while (river[y, x] != 1):
-                    #alguma condição de fronteira aqui
                     if y == 0 and (fdr[y, x] == 32 or fdr[y, x] == 64
                                    or fdr[y, x] == 128):
                         isnan = 1
@@ -316,7 +313,7 @@ def flow_hand_index(dem_raster,
                     if n != 0:
                         bound_b = np.insert(bound_b, 0, flow_distance[mE, nS])
 
-                if part > division_column:  #vizinho em cima
+                if part > division_column:
                     out[0] = 1
                     bound_c = flow_distance[mS, nS + 1:nE]
                     if n != division_column:
@@ -358,11 +355,13 @@ def flow_hand_index(dem_raster,
             part += 1
 
             flow_distance[mS:mE,
-                          nS:nE], indices[mS:mE, nS:nE] = fdist_index_host(
-                              dem_raster[mS:mE, nS:nE],
-                              flow_direction_matrix[mS:mE, nS:nE],
-                              river_matrix[mS:mE,
-                                           nS:nE], px, bound, bound_index, out)
+                          nS:nE], indices[mS:mE,
+                                          nS:nE] = flow_distance_index_cpu(
+                                              dem_raster[mS:mE, nS:nE],
+                                              flow_direction_matrix[mS:mE,
+                                                                    nS:nE],
+                                              river_matrix[mS:mE, nS:nE], px,
+                                              bound, bound_index, out)
 
             indices[mS:mE, nS:nE] = index_calculator(indices[mS:mE, nS:nE], mS,
                                                      nS, col)
@@ -434,15 +433,15 @@ def index_calculator(river_sub_matrix, row_start, column_start, column_size):
     return river_sub_matrix
 
 
-def fdist_index_host(dem,
-                     flow_direction,
-                     river_matrix,
-                     px,
-                     boundary_distance,
-                     boundary_index,
-                     out,
-                     blocks=0,
-                     threads=0):
+def flow_distance_index_cpu(dem,
+                            flow_direction,
+                            river_matrix,
+                            px,
+                            boundary_distance,
+                            boundary_index,
+                            out,
+                            blocks=0,
+                            threads=0):
     '''
     Method responsible for the host/device data transfer
 
@@ -484,13 +483,11 @@ def fdist_index_host(dem,
     if blocks == 0 and threads == 0:
         threads = 256
         blocks = math.ceil((row * col) / threads)
-        #checar isso aqui
 
     dem = np.asarray(dem).reshape(-1)
     flow_direction = np.asarray(flow_direction).reshape(-1)
     river_matrix = np.asarray(river_matrix).reshape(-1)
 
-    # hand = np.zeros((row*col), dtype='float32')
     flow_distance = np.zeros((row * col), dtype='float32')
     indices = np.zeros((row * col))
 
@@ -501,9 +498,10 @@ def fdist_index_host(dem,
     boundary_distance = cuda.to_device(boundary_distance)
     boundary_index = cuda.to_device(boundary_index)
 
-    fdist_index_device[blocks, threads](flow_direction, river_matrix, px,
-                                        flow_distance, indices, col, row,
-                                        boundary_distance, boundary_index, out)
+    flow_distance_index_gpu[blocks,
+                            threads](flow_direction, river_matrix, px,
+                                     flow_distance, indices, col, row,
+                                     boundary_distance, boundary_index, out)
 
     indices = indices.copy_to_host()
     flow_distance = flow_distance.copy_to_host()
@@ -515,9 +513,9 @@ def fdist_index_host(dem,
 
 
 @cuda.jit
-def fdist_index_device(flow_direction, river_matrix, px, flow_distance,
-                       indices, col, row, boundary_distance, boundary_index,
-                       out):
+def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
+                            indices, col, row, boundary_distance,
+                            boundary_index, out):
     '''
     GPU flow distance and river cell indexes method
 
@@ -556,8 +554,6 @@ def fdist_index_device(flow_direction, river_matrix, px, flow_distance,
         else:
             if river_matrix[i] == 1:
                 flow_distance[i] = 0
-                # indices[i] = 0
-                # position = i
                 indices[i] = i
             else:
                 pos = i
@@ -651,7 +647,7 @@ def fdist_index_device(flow_direction, river_matrix, px, flow_distance,
                                     isnan = 1
                                     break
                                 else:
-                                    irow = irow + 1  #Então eu pego um valor depois
+                                    irow = irow + 1
                                     dist += px * 1.4142 + boundary_distance[2][
                                         irow]
                                     break
