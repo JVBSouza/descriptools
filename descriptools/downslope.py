@@ -2,22 +2,7 @@ from numba import cuda, jit, float32
 import numpy as np
 import math
 
-import time
-
-
-def divisor(row_length, column_length, row_division, column_division):
-    bCol = np.array([], dtype=int)
-    bRow = np.array([], dtype=int)
-
-    for i in range(0, row_division, 1):
-        bRow = np.append(
-            bRow, [math.floor((i + 1) * row_length / (row_division + 1))])
-    for i in range(0, column_division, 1):
-        bCol = np.append(
-            bCol,
-            [math.floor((i + 1) * column_length / (column_division + 1))])
-
-    return bRow, bCol
+from descriptools.helpers import divisor
 
 
 def downslope_sequential(dem,
