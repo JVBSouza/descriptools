@@ -402,35 +402,35 @@ def hand_calculator(dem, indices):
     return hand
 
 
-def index_calculator(river_sub_matrix, row_start, column_start, column_size):
+def index_calculator(river_indices, row_start, column_start, column_size):
     '''
     Method that transform the river index from the sub-matrix to the whole matrix
 
     Parameters
     ----------
-    river_sub_matrix : int array
+    river_indices : int array
         Sub matrix river cell index.
     row_start : int
         Position of the first row of the sub-matrix.
-    column_start : TYPE
+    column_start : int
         Position of the first column of the sub-matrix.
-    column_size : TYPE
+    column_size : int
         Number of columns in the whole matrix.
 
     Returns
     -------
-    river_sub_matrix : int array
+    river_indices : int array
         River cell index.
 
     '''
-    row, col = river_sub_matrix.shape
+    row, col = river_indices.shape
 
-    river_sub_matrix = np.where(
-        river_sub_matrix == -100, -100,
-        (np.floor(river_sub_matrix / col) + row_start) * column_size +
-        river_sub_matrix % col + column_start)
+    river_indices = np.where(
+        river_indices == -100, -100,
+        (np.floor(river_indices / col) + row_start) * column_size +
+        river_indices % col + column_start)
 
-    return river_sub_matrix
+    return river_indices
 
 
 def flow_distance_index_cpu(dem,
