@@ -259,8 +259,8 @@ def slope_gpu(dem, slope, px, row, column):
                             else:
                                 continue
                         else:
-                            if aux < (dem[i] - dem[pos]) / math.sqrt(2.0):
-                                aux = (dem[i] - dem[pos]) / math.sqrt(2.0)
+                            if aux < (dem[i] - dem[pos]) / (px * math.sqrt(2.0)):
+                                aux = (dem[i] - dem[pos]) / (px * math.sqrt(2.0))
                             else:
                                 continue
             slope[i] = aux * 100

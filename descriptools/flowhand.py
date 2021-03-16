@@ -295,10 +295,10 @@ def flow_hand_index(dem_raster,
     for m in range(0, division_row + 1, 1):
         for n in range(0, division_column + 1, 1):
             out = np.zeros((4))
-            bound_c = np.zeros([1])
-            bound_e = np.zeros([1])
-            bound_d = np.zeros([1])
-            bound_b = np.zeros([1])
+            distance_up = np.zeros([1])
+            distance_left = np.zeros([1])
+            distance_right = np.zeros([1])
+            distance_down = np.zeros([1])
             
             index_up    = np.zeros([1])
             index_left  = np.zeros([1])
@@ -313,80 +313,80 @@ def flow_hand_index(dem_raster,
             if division_row > 0:
                 if part < (division_column + 1) * division_row:
                     out[3] = 1
-                    bound_b = flow_distance[mE, nS + 1:nE]
+                    distance_down = flow_distance[mE, nS + 1:nE]
                     index_down = indices[mE, nS + 1:nE]
                     if n != division_column:
-                        bound_b = np.insert(bound_b, nE - (nS + 1),
+                        distance_down = np.insert(distance_down, nE - (nS + 1),
                                             flow_distance[mE, nE])
                         index_down = np.insert(index_down, nE - (nS + 1),
                                             indices[mE, nE])
                         
                     if n != 0:
-                        bound_b = np.insert(bound_b, 0, flow_distance[mE, nS])
+                        distance_down = np.insert(distance_down, 0, flow_distance[mE, nS])
                         index_down = np.insert(index_down, 0, indices[mE, nS])
 
                 if part > division_column:
                     out[0] = 1
                         
-                    bound_c = flow_distance[mS, nS + 1:nE]
+                    distance_up = flow_distance[mS, nS + 1:nE]
                     index_up = indices[mS, nS + 1:nE]
                     
                     if n != division_column:
-                        bound_c = np.insert(bound_c, nE - (nS + 1),
+                        distance_up = np.insert(distance_up, nE - (nS + 1),
                                             flow_distance[mS, nE])
                         index_up = np.insert(index_up, nE - (nS + 1),
                                             indices[mS, nE])
                     if n != 0:
-                        bound_c = np.insert(bound_c, 0, flow_distance[mS, nS])
+                        distance_up = np.insert(distance_up, 0, flow_distance[mS, nS])
                         index_up = np.insert(index_up, 0, indices[mS, nS])
 
             if division_column > 0:
                 if part % (division_column + 1) != 0:
                     out[1] = 1
-                    bound_e = flow_distance[mS + 1:mE, nS]
+                    distance_left = flow_distance[mS + 1:mE, nS]
                     index_left = indices[mS + 1:mE, nS]
                     
                     if m != division_row:
-                        bound_e = np.insert(bound_e, mE - (mS + 1),
+                        distance_left = np.insert(distance_left, mE - (mS + 1),
                                             flow_distance[mE, nS])
                         index_left = np.insert(index_left, mE - (mS + 1),
                                             indices[mE, nS])
                         
                     if m != 0:
-                        bound_e = np.insert(bound_e, 0, flow_distance[mS, nS])
+                        distance_left = np.insert(distance_left, 0, flow_distance[mS, nS])
                         index_left = np.insert(index_left, 0, indices[mS, nS])
 
                 if part % (division_column + 1) != division_column:
                     out[2] = 1
-                    bound_d = flow_distance[mS + 1:mE, nE]
+                    distance_right = flow_distance[mS + 1:mE, nE]
                     index_right = indices[mS + 1:mE, nE]
                     
                     if m != division_row:
-                        bound_d = np.insert(bound_d, mE - (mS + 1),
+                        distance_right = np.insert(distance_right, mE - (mS + 1),
                                             flow_distance[mE, nE])
                         index_right = np.insert(index_right, mE - (mS + 1),
                                             indices[mE, nE])
                         
                     if m != 0:
-                        bound_d = np.insert(bound_d, 0, flow_distance[mS, nE])
+                        distance_right = np.insert(distance_right, 0, flow_distance[mS, nE])
                         index_right = np.insert(index_right, 0, indices[mS, nE])
                         
 
-            size = max(len(bound_c), len(bound_e), len(bound_d), len(bound_b))
+            size = max(len(distance_up), len(distance_left), len(distance_right), len(distance_down))
 
             bound = np.zeros((4, size))
             bound_index = np.zeros((4, size))
             
-            bound[0, 0:len(bound_c)] = bound_c
+            bound[0, 0:len(distance_up)] = distance_up
             bound_index[0, 0:len(index_up)] = index_up
             
-            bound[1, 0:len(bound_e)] = bound_e
+            bound[1, 0:len(distance_left)] = distance_left
             bound_index[1, 0:len(index_left)] = index_left
             
-            bound[2, 0:len(bound_d)] = bound_d
+            bound[2, 0:len(distance_right)] = distance_right
             bound_index[2, 0:len(index_right)] = index_right
             
-            bound[3, 0:len(bound_b)] = bound_b
+            bound[3, 0:len(distance_down)] = distance_down
             bound_index[3, 0:len(index_down)] = index_down       
 
             mS += 1
