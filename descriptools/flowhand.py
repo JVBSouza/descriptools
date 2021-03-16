@@ -21,8 +21,9 @@ def flow_distance_indexes_sequential(flow_direction,
         Binary matrix that 1- river cell 0-not river cell.
     px : int or float
         Raster pixel dimension.
-    flow_distance : flow distance flot array, optional
-        Flow distance. The default is np.array([]).
+    flow_distance : flow distance float array, optional
+        Flow distance. The default is an empty array.
+        This input is used for the boundary array calculation for matrix subdivision.
 
     Returns
     -------
@@ -42,7 +43,7 @@ def flow_distance_indexes_sequential(flow_direction,
         [len(flow_direction), len(flow_direction[0])], dtype='int')
     for i in range(0, len(flow_direction), 1):
         for j in range(0, len(flow_direction[0]), 1):
-            if flow_direction[i, j] == 255:
+            if flow_direction[i, j] == 0:
                 flow_distance[i, j] = -100
                 indices[i, j] = -100
             elif new == 0 and flow_distance[i, j] != -50:
@@ -81,35 +82,35 @@ def flow_distance_indexes_sequential(flow_direction,
                     elif flow_direction[y, x] == 2:
                         x += 1
                         y += 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif flow_direction[y, x] == 4:
                         y += 1
                         dist += px
                     elif flow_direction[y, x] == 8:
                         x -= 1
                         y += 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif flow_direction[y, x] == 16:
                         x -= 1
                         dist += px
                     elif flow_direction[y, x] == 32:
                         x -= 1
                         y -= 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0) # FIX: Square root
                     elif flow_direction[y, x] == 64:
                         y -= 1
                         dist += px
                     elif flow_direction[y, x] == 128:
                         x += 1
                         y -= 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
 
                     elif flow_direction[y, x] == 255:
                         isnan = 1
                         break
 
                     loop += 1
-                    if loop >= 500:
+                    if loop >= 5000:
                         isnan = 1
                         break
 
@@ -140,8 +141,9 @@ def fdist_indexes_sequential_jit(fdr,
         Binary matrix that 1- river cell 0-not river cell.
     px : int or float
         Raster pixel dimension.
-    fdist : flow distance flot array, optional
-        Flow distance. The default is np.array([]).
+    fdist : flow distance float array, optional
+        Flow distance. The default is an empty array.
+        This input is used for the boundary array calculation for matrix subdivision.
 
     Returns
     -------
@@ -159,11 +161,11 @@ def fdist_indexes_sequential_jit(fdr,
     indices = np.zeros(fdr.shape, int32)
     for i in range(0, len(fdr), 1):
         for j in range(0, len(fdr[0]), 1):
-            if fdr[i, j] == 255:
+            if new == 0 and fdist[i, j] != -50:
+                continue
+            elif fdr[i, j] == 0:
                 fdist[i, j] = -100
                 indices[i, j] = -100
-            elif new == 0 and fdist[i, j] != -50:
-                continue
             else:
                 y = i
                 x = j
@@ -195,35 +197,35 @@ def fdist_indexes_sequential_jit(fdr,
                     elif fdr[y, x] == 2:
                         x += 1
                         y += 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif fdr[y, x] == 4:
                         y += 1
                         dist += px
                     elif fdr[y, x] == 8:
                         x -= 1
                         y += 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif fdr[y, x] == 16:
                         x -= 1
                         dist += px
                     elif fdr[y, x] == 32:
                         x -= 1
                         y -= 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif fdr[y, x] == 64:
                         y -= 1
                         dist += px
                     elif fdr[y, x] == 128:
                         x += 1
                         y -= 1
-                        dist += px * 1.41  # FIX: Square root
+                        dist += px * math.sqrt(2.0)  # FIX: Square root
 
-                    elif fdr[y, x] == 255:
+                    elif fdr[y, x] == 0:
                         isnan = 1
                         break
 
                     loop += 1
-                    if loop >= 500:
+                    if loop >= 5000:
                         isnan = 1
                         break
 
@@ -274,7 +276,7 @@ def flow_hand_index(dem_raster,
     boundary_row, boundary_column = divisor(row, col, division_row,
                                             division_column)
 
-    flow_distance = np.zeros((row, col))
+    flow_distance = np.zeros((row, col),dtype='float32')
     indices = np.zeros((row, col), dtype='int')
 
     if division_row > 0 or division_column > 0:
@@ -297,6 +299,11 @@ def flow_hand_index(dem_raster,
             bound_e = np.zeros([1])
             bound_d = np.zeros([1])
             bound_b = np.zeros([1])
+            
+            index_up    = np.zeros([1])
+            index_left  = np.zeros([1])
+            index_right = np.zeros([1])
+            index_down  = np.zeros([1])
 
             mS = boundary_row[m]
             mE = boundary_row[m + 1]
@@ -307,53 +314,85 @@ def flow_hand_index(dem_raster,
                 if part < (division_column + 1) * division_row:
                     out[3] = 1
                     bound_b = flow_distance[mE, nS + 1:nE]
+                    index_down = indices[mE, nS + 1:nE]
                     if n != division_column:
                         bound_b = np.insert(bound_b, nE - (nS + 1),
                                             flow_distance[mE, nE])
+                        index_down = np.insert(index_down, nE - (nS + 1),
+                                            indices[mE, nE])
+                        
                     if n != 0:
                         bound_b = np.insert(bound_b, 0, flow_distance[mE, nS])
+                        index_down = np.insert(index_down, 0, indices[mE, nS])
 
                 if part > division_column:
                     out[0] = 1
+                        
                     bound_c = flow_distance[mS, nS + 1:nE]
+                    index_up = indices[mS, nS + 1:nE]
+                    
                     if n != division_column:
                         bound_c = np.insert(bound_c, nE - (nS + 1),
                                             flow_distance[mS, nE])
+                        index_up = np.insert(index_up, nE - (nS + 1),
+                                            indices[mS, nE])
                     if n != 0:
                         bound_c = np.insert(bound_c, 0, flow_distance[mS, nS])
+                        index_up = np.insert(index_up, 0, indices[mS, nS])
 
             if division_column > 0:
                 if part % (division_column + 1) != 0:
                     out[1] = 1
                     bound_e = flow_distance[mS + 1:mE, nS]
+                    index_left = indices[mS + 1:mE, nS]
+                    
                     if m != division_row:
                         bound_e = np.insert(bound_e, mE - (mS + 1),
                                             flow_distance[mE, nS])
+                        index_left = np.insert(index_left, mE - (mS + 1),
+                                            indices[mE, nS])
+                        
                     if m != 0:
                         bound_e = np.insert(bound_e, 0, flow_distance[mS, nS])
+                        index_left = np.insert(index_left, 0, indices[mS, nS])
 
                 if part % (division_column + 1) != division_column:
                     out[2] = 1
                     bound_d = flow_distance[mS + 1:mE, nE]
+                    index_right = indices[mS + 1:mE, nE]
+                    
                     if m != division_row:
                         bound_d = np.insert(bound_d, mE - (mS + 1),
                                             flow_distance[mE, nE])
+                        index_right = np.insert(index_right, mE - (mS + 1),
+                                            indices[mE, nE])
+                        
                     if m != 0:
                         bound_d = np.insert(bound_d, 0, flow_distance[mS, nE])
+                        index_right = np.insert(index_right, 0, indices[mS, nE])
+                        
 
             size = max(len(bound_c), len(bound_e), len(bound_d), len(bound_b))
 
             bound = np.zeros((4, size))
             bound_index = np.zeros((4, size))
+            
             bound[0, 0:len(bound_c)] = bound_c
+            bound_index[0, 0:len(index_up)] = index_up
+            
             bound[1, 0:len(bound_e)] = bound_e
+            bound_index[1, 0:len(index_left)] = index_left
+            
             bound[2, 0:len(bound_d)] = bound_d
+            bound_index[2, 0:len(index_right)] = index_right
+            
             bound[3, 0:len(bound_b)] = bound_b
+            bound_index[3, 0:len(index_down)] = index_down       
 
             mS += 1
             nS += 1
             part += 1
-
+            
             flow_distance[mS:mE,
                           nS:nE], indices[mS:mE,
                                           nS:nE] = flow_distance_index_cpu(
@@ -361,10 +400,11 @@ def flow_hand_index(dem_raster,
                                               flow_direction_matrix[mS:mE,
                                                                     nS:nE],
                                               river_matrix[mS:mE, nS:nE], px,
-                                              bound, bound_index, out)
+                                              bound, bound_index, out, 
+                                              mS, nS, col)
 
-            indices[mS:mE, nS:nE] = index_calculator(indices[mS:mE, nS:nE], mS,
-                                                     nS, col)
+            # indices[mS:mE, nS:nE] = index_calculator(indices[mS:mE, nS:nE], mS,
+            #                                           nS, col)
 
     hand = hand_calculator(dem_raster, indices)
 
@@ -440,6 +480,9 @@ def flow_distance_index_cpu(dem,
                             boundary_distance,
                             boundary_index,
                             out,
+                            row_start,
+                            col_start,
+                            matrix_columns,
                             blocks=0,
                             threads=0):
     '''
@@ -464,6 +507,12 @@ def flow_distance_index_cpu(dem,
     out : int array
         Array that represents wich directions have another sub-matrix.
         1-True 0-False. Up, left, right, down.
+    row_start : int
+        Row index of the first value
+    col_start : int
+        Column index of the first value
+    matrix_columns : int
+        Number of columns of the whole matrix
     blocks : int, optional
         Number of block of threads. The default is 0.
     threads : int, optional
@@ -501,7 +550,8 @@ def flow_distance_index_cpu(dem,
     flow_distance_index_gpu[blocks,
                             threads](flow_direction, river_matrix, px,
                                      flow_distance, indices, col, row,
-                                     boundary_distance, boundary_index, out)
+                                     boundary_distance, boundary_index, out,
+                                     row_start, col_start, matrix_columns)
 
     indices = indices.copy_to_host()
     flow_distance = flow_distance.copy_to_host()
@@ -515,7 +565,7 @@ def flow_distance_index_cpu(dem,
 @cuda.jit
 def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                             indices, col, row, boundary_distance,
-                            boundary_index, out):
+                            boundary_index, out, row_start, col_start, matrix_columns):
     '''
     GPU flow distance and river cell indexes method
 
@@ -543,26 +593,32 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
         Necessary for flow directions that lead to outside of the sub-matrix domain.
     out : int array
         Array that represents wich directions have another sub-matrix.
-        1-True 0-False. Up, left, right, down.
+        1-True 0-False. row0 Up, row1 left, row2 right, row3 down.
 
     '''
     i = cuda.grid(1)
     if i >= 0 and i < col * row:
-        if flow_direction[i] <= -100:
+        if flow_direction[i] <= 0:
             flow_distance[i] = -100
             indices[i] = -100
+        
+        # elif i == 1 or i == 2:
+        #     flow_distance[i] = -33
+        #     indices[i] = -33
         else:
             if river_matrix[i] == 1:
                 flow_distance[i] = 0
-                indices[i] = i
+                # indices[i] = i
+                indices[i] = (row_start + math.floor(i/col)) * matrix_columns + col_start + i%col
             else:
                 pos = i
                 isnan = 0
                 dist = 0
                 loop = 0
-                loop1 = 0
-                loop2 = 0
-                loop3 = 0
+                loop1 = -10
+                loop2 = -20
+                loop3 = -30
+                isout = 0
                 while (river_matrix[pos] != 1):
                     if pos < col and (flow_direction[pos] == 32
                                       or flow_direction[pos] == 64
@@ -576,14 +632,18 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                             if out[1] == 1:
                                 irow += 1
                             if flow_direction[pos] == 32:
-
                                 if pos == 0 and out[1] == 0:
                                     isnan = 1
                                     break
                                 else:
                                     irow = irow - 1
-                                    dist += (px * 1.4142
+                                    if boundary_distance[0][irow] == -100:
+                                        isnan = 1
+                                        break
+                                    dist += (px * math.sqrt(2.0)
                                              ) + boundary_distance[0][irow]
+                                    indices[i] = boundary_index[0][irow]
+                                    isout = 1
                                     break
                             elif flow_direction[pos] == 128:
                                 if pos == col - 1 and out[2] == 0:
@@ -591,16 +651,27 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                     break
                                 else:
                                     irow = irow + 1
-                                    dist += px * 1.4142 + boundary_distance[0][
+                                    if boundary_distance[0][irow] == -100:
+                                        isnan = 1
+                                        break
+                                    dist += px * math.sqrt(2.0) + boundary_distance[0][
                                         irow]
+                                    indices[i] = boundary_index[0][irow]
+                                    isout = 1
                                     break
                             else:
+                                if boundary_distance[0][irow] == -100:
+                                        isnan = 1
+                                        break
                                 dist += px + boundary_distance[0][irow]
+                                indices[i] = boundary_index[0][irow]
+                                isout = 1
                                 break
 
                     elif pos % col == 0 and (flow_direction[pos] == 8
                                              or flow_direction[pos] == 16
                                              or flow_direction[pos] == 32):
+
                         if out[1] == 0:
                             isnan = 1
                             break
@@ -611,7 +682,12 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                 irow += 1
                             if flow_direction[pos] == 32:
                                 irow = irow - 1
-                                dist += 1.4142 + boundary_distance[1][irow]
+                                if  boundary_distance[1][irow] == -100:
+                                    isnan = 1
+                                    break
+                                dist += px * math.sqrt(2.0) + boundary_distance[1][irow]
+                                indices[i] = boundary_index[1][irow]
+                                isout = 1
                                 break
                             elif flow_direction[pos] == 8:
                                 if out[3] == 0 and pos == row * (col - 1):
@@ -619,11 +695,21 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                     break
                                 else:
                                     irow = irow + 1
-                                    dist += px * 1.4142 + boundary_distance[1][
+                                    if  boundary_distance[1][irow] == -100:
+                                        isnan = 1
+                                        break
+                                    dist += px * math.sqrt(2.0) + boundary_distance[1][
                                         irow]
+                                    indices[i] = boundary_index[1][irow]
+                                    isout = 1
                                     break
                             else:
+                                if  boundary_distance[1][irow] == -100:
+                                    isnan = 1
+                                    break
                                 dist += px + boundary_distance[1][irow]
+                                indices[i] = boundary_index[1][irow]
+                                isout = 1
                                 break
 
                     elif pos % col == (col -
@@ -640,7 +726,12 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                 irow += 1
                             if flow_direction[pos] == 128:
                                 irow = irow - 1
-                                dist += px * 1.4142 + boundary_distance[2][irow]
+                                if  boundary_distance[2][irow] == -100:
+                                    isnan = 1
+                                    break
+                                dist += px * math.sqrt(2.0) + boundary_distance[2][irow]
+                                indices[i] = boundary_index[2][irow]
+                                isout = 1
                                 break
                             elif flow_direction[pos] == 2:
                                 if out[3] == 0 and pos == (row * col) - 1:
@@ -648,11 +739,21 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                     break
                                 else:
                                     irow = irow + 1
-                                    dist += px * 1.4142 + boundary_distance[2][
+                                    if  boundary_distance[2][irow] == -100:
+                                        isnan = 1
+                                        break
+                                    dist += px * math.sqrt(2.0) + boundary_distance[2][
                                         irow]
+                                    indices[i] = boundary_index[2][irow]
+                                    isout = 1
                                     break
                             else:
+                                if boundary_distance[2][irow] == -100:
+                                    isnan = 1
+                                    break
                                 dist += px + boundary_distance[2][irow]
+                                indices[i] = boundary_index[2][irow]
+                                isout = 1
                                 break
 
                     elif pos >= (row - 1) * col and (
@@ -668,14 +769,29 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                                 irow += 1
                             if flow_direction[pos] == 8:
                                 irow = irow - 1
-                                dist += px * 1.4142 + boundary_distance[3][irow]
+                                if  boundary_distance[3][irow] == -100:
+                                    isnan = 1
+                                    break
+                                dist += px * math.sqrt(2.0) + boundary_distance[3][irow]
+                                indices[i] = boundary_index[3][irow]
+                                isout = 1
                                 break
                             elif flow_direction[pos] == 2:
                                 irow += 1
-                                dist += px * 1.4142 + boundary_distance[3][irow]
+                                if  boundary_distance[3][irow] == -100:
+                                    isnan = 1
+                                    break
+                                dist += px * math.sqrt(2.0) + boundary_distance[3][irow]
+                                indices[i] = boundary_index[3][irow]
+                                isout = 1
                                 break
                             else:
+                                if  boundary_distance[3][irow] == -100:
+                                    isnan = 1
+                                    break
                                 dist += px + boundary_distance[3][irow]
+                                indices[i] = boundary_index[3][irow]
+                                isout = 1
                                 break
 
                     loop3 = loop2
@@ -687,27 +803,27 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                         dist += px
                     elif flow_direction[pos] == 2:
                         pos += 1 + col
-                        dist += (px * 1.4142)
+                        dist += px * math.sqrt(2.0)
                     elif flow_direction[pos] == 4:
                         pos += col
                         dist += px
                     elif flow_direction[pos] == 8:
                         pos += col - 1
-                        dist += (px * 1.4142)
+                        dist += px * math.sqrt(2.0)
                     elif flow_direction[pos] == 16:
                         pos += -1
                         dist += px
                     elif flow_direction[pos] == 32:
                         pos += -1 - col
-                        dist += (px * 1.4142)
+                        dist += px * math.sqrt(2.0)
                     elif flow_direction[pos] == 64:
                         pos += -col
                         dist += px
                     elif flow_direction[pos] == 128:
                         pos += -col + 1
-                        dist += (px * 1.4142)
+                        dist += px * math.sqrt(2.0)
 
-                    if flow_direction[pos] == -100:
+                    if flow_direction[pos] == 0:
                         isnan = 1
                         break
 
@@ -725,4 +841,6 @@ def flow_distance_index_gpu(flow_direction, river_matrix, px, flow_distance,
                     indices[i] = -100
                 else:
                     flow_distance[i] = dist
-                    indices[i] = pos
+                    if isout == 0:
+                        indices[i] = (row_start + math.floor(pos/col)) * matrix_columns + col_start + pos%col
+                    # indices[i] = pos
