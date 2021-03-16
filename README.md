@@ -1,10 +1,11 @@
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
-  <h3 align="center">descriptools</h3>
+  <h2 align="center">descriptools</h2>
 
   <p align="center">
-    A gpu-based toolbox for terrain descriptor calculation/delineation
+    A gpu-based toolbox for terrain descriptor calculation/delineation.
+
     <br />
     ·
     <a href="https://github.com/github_username/repo_name/issues">Report Bug</a>
@@ -32,6 +33,7 @@
       </ul>
     </li>
     <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
   </ol>
 </details>
 
@@ -39,7 +41,8 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 Terrain descriptors present information of the earth surface and its relationship with water movement.
-This toolbox was devised to reduce calculation time of these descriptors with GPU parallelization. As well as functions to produce flood map via linear binary classification.
+This toolbox was devised to reduce calculation time of these descriptors with GPU parallelization. As well as functions to produce flood map via linear binary classification. </br>
+This toolbox was made for reviewing process of Computer and Geosciences journal for the manuscript entitled: <b>Parallelized geomorphic descriptors for flood-prone areas delineation</b>
 
 
 
@@ -58,7 +61,8 @@ To get a local copy up and running follow these simple steps.
 
 
 
-### Installation
+### PIP
+You can install descriptools using pip:
    ```sh
    pip install descriptools
    ```
@@ -69,3 +73,13 @@ To get a local copy up and running follow these simple steps.
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
+<!-- CONTACT -->
+## Contact
+
+Authors: José Vinícius Boinf de Souza and Pedro Luiz Borges Chaffe
+
+Developer: José Vinícius Boing de Souza
+
+Contact address: joseboing@gmail.com
+
+Project Link: [https://github.com/JVBSouza/descriptools](https://github.com/JVBSouza/descriptools)

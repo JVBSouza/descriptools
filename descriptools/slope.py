@@ -40,9 +40,9 @@ def slope_sequential_jit(dem, px):
                             continue
                     else:
                         if aux < (dem[i, j] - dem[i + y, j + x]) / (px *
-                                                                    1.4142):
+                                                                     math.sqrt(2.0)):
                             aux = (dem[i, j] - dem[i + y, j + x]) / (px *
-                                                                     1.4142)
+                                                                      math.sqrt(2.0))
                         else:
                             continue
             slope[i, j] = aux * 100
@@ -84,9 +84,9 @@ def slope_sequential(dem, px):
                     else:
                         # var = (dem[i,j] - dem[i+y,j+x])/(px*1.4142)
                         if aux < (dem[i, j] - dem[i + y, j + x]) / (px *
-                                                                    1.4142):
+                                                                    math.sqrt(2.0)):
                             aux = (dem[i, j] - dem[i + y, j + x]) / (px *
-                                                                     1.4142)
+                                                                      math.sqrt(2.0))
                         else:
                             continue
             slope[i, j] = aux
@@ -259,8 +259,8 @@ def slope_gpu(dem, slope, px, row, column):
                             else:
                                 continue
                         else:
-                            if aux < (dem[i] - dem[pos]) / (px * 1.4142):
-                                aux = (dem[i] - dem[pos]) / (px * 1.4142)
+                            if aux < (dem[i] - dem[pos]) / (px * math.sqrt(2.0)):
+                                aux = (dem[i] - dem[pos]) / (px * math.sqrt(2.0))
                             else:
                                 continue
             slope[i] = aux * 100

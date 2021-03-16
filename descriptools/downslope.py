@@ -75,7 +75,7 @@ def downslope_sequential(dem,
 
                     if flow_direction[y, x] == 1:
                         if dem[y, x + 1] == -100:
-                            is_nan = 2
+                            is_nan = 1
                             break
                         x += 1
                         dist += px
@@ -88,45 +88,45 @@ def downslope_sequential(dem,
                         dist += px * math.sqrt(2.0)  #Arrumar raiz aqui
                     elif flow_direction[y, x] == 4:
                         if dem[y + 1, x] == -100:
-                            is_nan = 4
+                            is_nan = 1
                             break
                         y += 1
                         dist += px
                     elif flow_direction[y, x] == 8:
                         if dem[y + 1, x - 1] == -100:
-                            is_nan = 5
+                            is_nan = 1
                             break
                         x -= 1
                         y += 1
                         dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif flow_direction[y, x] == 16:
                         if dem[y, x - 1] == -100:
-                            is_nan = 6
+                            is_nan = 1
                             break
                         x -= 1
                         dist += px
                     elif flow_direction[y, x] == 32:
                         if dem[y - 1, x - 1] == -100:
-                            is_nan = 7
+                            is_nan = 1
                             break
                         x -= 1
                         y -= 1
                         dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif flow_direction[y, x] == 64:
                         if dem[y - 1, x] == -100:
-                            is_nan = 8
+                            is_nan = 1
                             break
                         y -= 1
                         dist += px
                     elif flow_direction[y, x] == 128:
                         if dem[y - 1, x + 1] == -100:
-                            is_nan = 9
+                            is_nan = 1
                             break
                         x += 1
                         y -= 1
                         dist += px * math.sqrt(2.0)  # FIX: Square root
                     elif flow_direction[y, x] == -100:
-                        is_nan = 10
+                        is_nan = 1
                         break
 
                     if y >= len(downslope):
@@ -141,12 +141,12 @@ def downslope_sequential(dem,
                         break
 
                     if dem[y, x] == -100:
-                        is_nan = 11
+                        is_nan = 1
                         break
 
                     loop += 1
 
-                    if loop == 500:
+                    if loop == 5000:
                         break
 
                 if is_nan > 1:
@@ -193,6 +193,7 @@ def downslope_sequential_jit(dem,
 
     for i in range(0, len(downslope), 1):
         for j in range(0, len(downslope[0]), 1):
+          
             if dem[i, j] == -100:
                 downslope[i, j] = -100
                 continue
@@ -366,6 +367,9 @@ def downsloper(dem,
                       nS:nE] = downslope_cpu(dem[mS:mE, nS:nE],
                                              flow_direction[mS:mE, nS:nE], px,
                                              elevation_difference)
+                                             
+
+                                             
     downslope = downslope_sequential_jit(dem, flow_direction, px,
                                          elevation_difference, downslope)
 
@@ -404,7 +408,7 @@ def downslope_cpu(dem,
     '''
     row = len(dem)
     col = len(dem[0])
-
+    
     if blocks == 0 and threads == 0:
         threads = 256
         blocks = math.ceil((row * col) / threads)
@@ -419,10 +423,10 @@ def downslope_cpu(dem,
 
     downslope_gpu[blocks, threads](dem, flow_direction, downslope, px,
                                    elevation_difference, col, row)
-
+    
     downslope = downslope.copy_to_host()
 
-    downslope = downslope.reshape(row, col)
+    downslope = downslope.reshape(row, col)  
 
     return downslope
 
@@ -477,7 +481,7 @@ def downslope_gpu(dem, flow_direction, downslope, px, elevation_difference,
                                                  or flow_direction[pos] == 2):
                     out = 1
                     break
-                elif pos >= (row - 1) * row and (flow_direction[pos] == 2
+                elif pos >= (row - 1) * col and (flow_direction[pos] == 2
                                                  or flow_direction[pos] == 4
                                                  or flow_direction[pos] == 8):
                     out = 1
