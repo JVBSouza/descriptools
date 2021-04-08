@@ -44,11 +44,11 @@ def topographic_index_sequential_jit(flow_accumulation, slope, px):
             else:
                 if flow_accumulation[i, j] == 0:
                     topographic_index[i, j] = np.log(
-                        (1 * px * px) / (np.tan(slope[i, j]) + 0.0001))
+                        (1 * px * px) / (np.tan(slope[i, j]) + 0.01))
                 else:
                     topographic_index[i, j] = np.log(
                         (flow_accumulation[i, j] * px * px) /
-                        (np.tan(slope[i, j]) + 0.0001))
+                        (np.tan(slope[i, j]) + 0.01))
 
     return topographic_index
 
@@ -66,11 +66,11 @@ def modified_topographic_index_sequential_jit(flow_accumulation, slope, px,
                 if flow_accumulation[i, j] == 0:
                     modified_topographic_index[i, j] = np.log(
                         np.power(1 * px * px, expoent) /
-                        (np.tan(slope[i, j]) + 0.0001))
+                        (np.tan(slope[i, j]) + 0.01))
                 else:
                     modified_topographic_index[i, j] = np.log(
                         np.power(flow_accumulation[i, j] * px * px, expoent) /
-                        (np.tan(slope[i, j]) + 0.0001))
+                        (np.tan(slope[i, j]) + 0.01))
 
     return modified_topographic_index
 
@@ -254,11 +254,11 @@ def topographic_index_gpu(flow_accumulation, slope, topographic_index, px):
         else:
             if flow_accumulation[i] == 0:
                 topographic_index[i] = math.log(
-                    (1 * px**2) / (math.tan(slope[i] + 0.0001)))
+                    (1 * px**2) / (math.tan(slope[i] + 0.01)))
             else:
                 topographic_index[i] = math.log(
                     (flow_accumulation[i] * px**2) /
-                    (math.tan(slope[i] + 0.0001)))
+                    (math.tan(slope[i] + 0.01)))
 
 
 @cuda.jit
@@ -288,8 +288,8 @@ def modified_topographic_index_gpu(flow_accumulation, slope,
         else:
             if flow_accumulation[i] == 0:
                 modified_topographic_index[i] = math.log(
-                    ((1 * px**2)**expoent) / (math.tan(slope[i] + 0.0001)))
+                    ((1 * px**2)**expoent) / (math.tan(slope[i] + 0.01)))
             else:
                 modified_topographic_index[i] = math.log(
                     ((flow_accumulation[i] * px**2)**expoent) /
-                    (math.tan(slope[i] + 0.0001)))
+                    (math.tan(slope[i] + 0.01)))
