@@ -2,7 +2,6 @@
 <br />
 <p align="center">
   <h2 align="center">descriptools</h2>
-
   <p align="center">
     A gpu-based toolbox for terrain descriptor calculation/delineation.
     <br />
@@ -12,6 +11,7 @@
     <a href="https://github.com/github_username/repo_name/issues">Request Feature</a>
   </p>
 </p>
+<br />
 
 
 
