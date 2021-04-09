@@ -9,7 +9,7 @@ with open(path.join(this_directory, "README.md")) as f:
 setup(
     name="descriptools",
     packages=["descriptools"],
-    version="0.0.1",
+    version="1.0.1",
     license="MIT",
     description=
     "A gpu-based toolbox for terrain descriptor calculation/delineation",
