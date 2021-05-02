@@ -149,8 +149,14 @@ def river_accumulation(flow_accumulation, indices):
     return river_flow_accumulation
 
 
-def gfi_calculator(hand, flow_accumulation, indices, n_gfi, scale_factor,
-                   size):
+def gfi_calculator(hand, 
+                   flow_accumulation, 
+                   indices, 
+                   n_gfi, 
+                   scale_factor,
+                   size,
+                   division_column=0, 
+                   division_row=0):
     '''
     Method responsible for the partioning of the matrix
 
@@ -176,23 +182,20 @@ def gfi_calculator(hand, flow_accumulation, indices, n_gfi, scale_factor,
     row_size = len(hand)
     col_size = len(hand[0])
 
-    div_col = 2
-    div_row = 2
-
-    boundary_row, boundary_column = divisor(row_size, col_size, div_row,
-                                            div_col)
+    boundary_row, boundary_column = divisor(row_size, col_size, division_row,
+                                            division_column)
 
     flow_accumulation = river_accumulation(flow_accumulation, indices)
 
     gfi = np.zeros((row_size, col_size))
 
-    boundary_row = np.insert(boundary_row, div_row, row_size)
+    boundary_row = np.insert(boundary_row, division_row, row_size)
     boundary_row = np.insert(boundary_row, 0, 0)
-    boundary_column = np.insert(boundary_column, div_col, col_size)
+    boundary_column = np.insert(boundary_column, division_column, col_size)
     boundary_column = np.insert(boundary_column, 0, 0)
 
-    for m in range(0, div_row + 1, 1):
-        for n in range(0, div_col + 1, 1):
+    for m in range(0, division_row + 1, 1):
+        for n in range(0, division_column + 1, 1):
 
             mS = boundary_row[m]
             mE = boundary_row[m + 1]
@@ -293,7 +296,13 @@ def geomorphic_flood_index_gpu(hand, river_flow_accumulation, gfi, expoent,
                               (hand[i] + 0.01))
 
 
-def ln_hl_H_calculator(hand, flow_accumulation, n_gfi, scale_factor, size):
+def ln_hl_H_calculator(hand, 
+                       flow_accumulation, 
+                       n_gfi, 
+                       scale_factor, 
+                       size, 
+                       division_column=0, 
+                       division_row=0):
     '''
     Method responsible for the partioning of the matrix
 
@@ -317,19 +326,16 @@ def ln_hl_H_calculator(hand, flow_accumulation, n_gfi, scale_factor, size):
     row_size = len(hand)
     col_size = len(hand[0])
 
-    div_col = 0
-    div_row = 0
-
-    bRow, bCol = divisor(row_size, col_size, div_row, div_col)
+    bRow, bCol = divisor(row_size, col_size, division_row, division_column)
 
     lnhlh = np.zeros((row_size, col_size))
-    bRow = np.insert(bRow, div_row, row_size)
+    bRow = np.insert(bRow, division_row, row_size)
     bRow = np.insert(bRow, 0, 0)
-    bCol = np.insert(bCol, div_col, col_size)
+    bCol = np.insert(bCol, division_column, col_size)
     bCol = np.insert(bCol, 0, 0)
 
-    for m in range(0, div_row + 1, 1):
-        for n in range(0, div_col + 1, 1):
+    for m in range(0, division_row + 1, 1):
+        for n in range(0, division_column + 1, 1):
             mS = bRow[m]
             mE = bRow[m + 1]
             nS = bCol[n]

@@ -93,7 +93,7 @@ def slope_sequential(dem, px):
     return slope
 
 
-def sloper(dem, px):
+def sloper(dem, px, division_column=0, division_row=0):
     '''
     Method responsible for the matrix dimension division
 
@@ -110,44 +110,37 @@ def sloper(dem, px):
         Highest slope of the neighbouring cells.
 
     '''
-    #Essa é a função responsável pela divisão
-    #Slope é simples, divide em x partes e adiciona colunas dos lados
-    #Se pegar coluna/linha de fora, adiciona como nan, se não pega da outra divisão
-
-    div_col = 0
-    div_row = 0
 
     row_size = len(dem)
     col_size = len(dem[0])
 
-    bRow, bCol = divisor(row_size, col_size, div_row, div_col)
+    bRow, bCol = divisor(row_size, col_size, division_column=0, division_row=0)
 
     slope = np.zeros((row_size, col_size))
 
-    bRow = np.insert(bRow, div_row, row_size)
+    bRow = np.insert(bRow, division_row, row_size)
     bRow = np.insert(bRow, 0, 0)
-    bCol = np.insert(bCol, div_col, col_size)
+    bCol = np.insert(bCol, division_column, col_size)
     bCol = np.insert(bCol, 0, 0)
 
-    for m in range(0, div_row + 1, 1):
-        for n in range(0, div_col + 1, +1):
+    for m in range(0, division_row + 1, 1):
+        for n in range(0, division_column + 1, +1):
 
             mS = bRow[m]
             mE = bRow[m + 1]
             nS = bCol[n]
             nE = bCol[n + 1]
 
-            # print(dem[mS:mE,nS:nE])
             extra = np.array([0, 0, 0, 0])
 
             if m == 0:
-                extra[0] = 1  #cima
+                extra[0] = 1  #up
             if n == 0:
-                extra[1] = 1  #esquerda
-            if n == div_col:
-                extra[2] = 1  #direita
-            if m == div_row:
-                extra[3] = 1  #baixo
+                extra[1] = 1  #left
+            if n == division_column:
+                extra[2] = 1  #right
+            if m == division_row:
+                extra[3] = 1  #down
 
             slope[mS:mE, nS:nE] = slope_cpu(
                 dem[mS - 1 + extra[0]:mE + 1 - extra[3],
