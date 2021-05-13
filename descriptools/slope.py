@@ -114,7 +114,7 @@ def sloper(dem, px, division_column=0, division_row=0):
     row_size = len(dem)
     col_size = len(dem[0])
 
-    bRow, bCol = divisor(row_size, col_size, division_column=0, division_row=0)
+    bRow, bCol = divisor(row_size, col_size, division_column, division_row)
 
     slope = np.zeros((row_size, col_size))
 
