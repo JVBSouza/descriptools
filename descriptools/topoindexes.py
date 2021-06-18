@@ -254,10 +254,10 @@ def topographic_index_gpu(flow_accumulation, slope, topographic_index, px):
         else:
             if flow_accumulation[i] == 0:
                 topographic_index[i] = math.log(
-                    (1 * px**2) / (math.tan(slope[i] + 0.01)))
+                    (1 * (px*px)) / (math.tan(slope[i] + 0.01)))
             else:
                 topographic_index[i] = math.log(
-                    (flow_accumulation[i] * px**2) /
+                    (flow_accumulation[i] * (px*px)) /
                     (math.tan(slope[i] + 0.01)))
 
 
@@ -288,8 +288,8 @@ def modified_topographic_index_gpu(flow_accumulation, slope,
         else:
             if flow_accumulation[i] == 0:
                 modified_topographic_index[i] = math.log(
-                    ((1 * px**2)**expoent) / (math.tan(slope[i] + 0.01)))
+                    ((1 * (px*px))**expoent) / (math.tan(slope[i] + 0.01)))
             else:
                 modified_topographic_index[i] = math.log(
-                    ((flow_accumulation[i] * px**2)**expoent) /
+                    ((flow_accumulation[i] * (px*px))**expoent) /
                     (math.tan(slope[i] + 0.01)))
