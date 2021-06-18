@@ -6,7 +6,7 @@ from descriptools.helpers import divisor
 
 
 def geomorphic_flood_index_sequential(hand, flow_accumulation, indices,
-                                      expoent, scale_factor):
+                                      expoent, scale_factor, px):
     '''
     Sequential method for the GFI index
 
@@ -37,14 +37,14 @@ def geomorphic_flood_index_sequential(hand, flow_accumulation, indices,
             hand == 0, 0,
             np.log(scale_factor * (np.power(
                 np.where(river_flow_accumulation == 0, 1,
-                         river_flow_accumulation), expoent)) / hand)))
+                         river_flow_accumulation) * (px * px), expoent)) / hand)))
 
     return geomorphic_flood_index
 
 
 @jit
 def geomorphic_flood_index_sequential_jit(hand, flow_accumulation, indices,
-                                          expoent, scale_factor):
+                                          expoent, scale_factor, px):
     river_flow_accumulation = river_accumulation(flow_accumulation, indices)
     geomorphic_flood_index = np.zeros(hand.shape, dtype=float32)
 
@@ -55,14 +55,14 @@ def geomorphic_flood_index_sequential_jit(hand, flow_accumulation, indices,
             else:
                 geomorphic_flood_index[i, j] = np.log(
                     scale_factor *
-                    (np.power(river_flow_accumulation[i, j], expoent)) /
+                    (np.power(river_flow_accumulation[i, j] * (px * px), expoent)) /
                     (hand[i, j] + 0.01))
 
     return geomorphic_flood_index
 
 
 @jit
-def ln_hl_H_sequential_jit(hand, flow_accumulation, expoent, scale_factor):
+def ln_hl_H_sequential_jit(hand, flow_accumulation, expoent, scale_factor, px):
 
     ln_hl_H = np.zeros(hand.shape, dtype=float32)
 
@@ -70,23 +70,21 @@ def ln_hl_H_sequential_jit(hand, flow_accumulation, expoent, scale_factor):
         for j in range(0, len(hand[0]), 1):
             if hand[i, j] == -100:
                 ln_hl_H[i, j] = -100
-            elif hand[i, j] == 0:
-                ln_hl_H[i, j] = 0
             else:
                 if flow_accumulation[i, j] == 0:
                     ln_hl_H[i,
-                            j] = np.log(scale_factor * (np.power(1, expoent)) /
+                            j] = np.log(scale_factor * (np.power(1 * (px * px), expoent)) /
                                         (hand[i, j] + 0.01))
                 else:
                     ln_hl_H[i, j] = np.log(
                         scale_factor *
-                        (np.power(flow_accumulation[i, j], expoent)) /
+                        (np.power(flow_accumulation[i, j] * (px * px), expoent)) /
                         (hand[i, j] + 0.01))
 
     return ln_hl_H
 
 
-def ln_hl_H_sequential(hand, flow_accumulation, expoent, scale_factor):
+def ln_hl_H_sequential(hand, flow_accumulation, expoent, scale_factor, px):
     '''
     Sequential method for the ln(hl/HAND) index
 
@@ -112,7 +110,7 @@ def ln_hl_H_sequential(hand, flow_accumulation, expoent, scale_factor):
         np.where(
             hand == 0, 0,
             np.log(scale_factor * (np.power(
-                np.where(flow_accumulation == 0, 1, flow_accumulation),
+                np.where(flow_accumulation == 0, 1, flow_accumulation) * (px * px),
                 expoent)) / hand)))
     return ln_hl_H
 
